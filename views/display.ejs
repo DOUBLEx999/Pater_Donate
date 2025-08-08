@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= pageTitle %> - Display</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            color: white;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+            padding: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .header h1 {
+            font-size: 4em;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 3s ease infinite;
+            margin-bottom: 20px;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            animation: slideInUp 0.8s ease-out;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-10px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .stat-number {
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ffd89b, #19547b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 1.2em;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .donations-section {
+            margin-top: 60px;
+        }
+
+        .section-title {
+            font-size: 2.5em;
+            text-align: center;
+            margin-bottom: 40px;
+            color: #4ecdc4;
+            animation: pulse 2s ease-in-out infinite alternate;
+        }
+
+        .donation-feed {
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .donation-item {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transform: translateX(-100%);
+            opacity: 0;
+            animation: slideInFromLeft 0.5s ease-out forwards;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .donation-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        .donation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .donor-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ffd89b;
+        }
+
+        .amount {
+            font-size: 1.8em;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .donation-message {
+            color: #e0e0e0;
+            font-size: 1.1em;
+            line-height: 1.5;
+            font-style: italic;
+        }
+
+        .timestamp {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 0.9em;
+            opacity: 0.6;
+        }
+
+        .notification-alert {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            padding: 40px 60px;
+            border-radius: 20px;
+            font-size: 2em;
+            font-weight: bold;
+            text-align: center;
+            z-index: 1000;
+            opacity: 0;
+            scale: 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .notification-alert.show {
+            opacity: 1;
+            scale: 1;
+            animation: bounce 0.6s ease;
+        }
+
+        .floating-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            animation: float 20s infinite linear;
+        }
+
+        /* Animations */
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInFromLeft {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes pulse {
+            from { opacity: 1; }
+            to { opacity: 0.7; }
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 40%, 60%, 80% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            10%, 30%, 50%, 70%, 90% {
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Scrollbar */
+        .donation-feed::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .donation-feed::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .donation-feed::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        .donation-feed::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2.5em;
+            }
+
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+
+            .stat-card {
+                padding: 20px;
+            }
+
+            .stat-number {
+                font-size: 2em;
+            }
+
+            .donation-item {
+                padding: 20px;
+            }
+
+            .donor-name {
+                font-size: 1.2em;
+            }
+
+            .amount {
+                font-size: 1.4em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-particles" id="particles"></div>
+    <div class="overlay"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>Pater Donations</h1>
+            <p style="font-size: 1.2em; opacity: 0.8;">ดูการรวม</p>
+        </div>
+
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-number" id="totalAmount"><%= stats.totalAmount.toLocaleString() %></div>
+                <div class="stat-label">บาททั้งหมด</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalDonations"><%= stats.totalDonations %></div>
+                <div class="stat-label">ครั้งทั้งหมด</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="avgAmount"><%= Math.round(stats.averageAmount || 0).toLocaleString() %></div>
+                <div class="stat-label">บาทเฉลี่ย</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="topDonation"><%= (stats.topDonation || 0).toLocaleString() %></div>
+                <div class="stat-label">บาทสูงสุด</div>
+            </div>
+        </div>
+
+        <div class="donations-section">
+            <h2 class="section-title">ล่าสุด</h2>
+            <div class="donation-feed" id="donationFeed">
+                <% if (recentDonations && recentDonations.length > 0) { %>
+                    <% recentDonations.forEach((donation, index) => { %>
+                    <div class="donation-item" style="animation-delay: <%= index * 0.1 %>s;">
+                        <div class="timestamp"><%= new Date(donation.timestamp).toLocaleTimeString('th-TH') %></div>
+                        <div class="donation-header">
+                            <span class="donor-name"><%= donation.donorName %></span>
+                            <span class="amount"><%= donation.amount.toLocaleString() %> ฿</span>
+                        </div>
+                        <% if (donation.message) { %>
+                        <div class="donation-message">"<%= donation.message %>"</div>
+                        <% } %>
+                    </div>
+                    <% }); %>
+                <% } else { %>
+                    <div class="donation-item">
+                        <div class="donation-header">
+                            <span class="donor-name">รอการบริจาคแรก...</span>
+                            <span class="amount">💝</span>
+                        </div>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification-alert" id="notificationAlert"></div>
+
+    <!-- Audio for notifications -->
+    <audio id="donationSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+rzu2EeByJ5z+/bgDYIGmO48+ajYEAIF2q+9d2dOQgVY7n2n1+PFCJKo+nuzGEeBjtlu+zf5EQJFmm81+LMRC" type="audio/wav">
+    </audio>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const donationSound = document.getElementById('donationSound');
+        const notificationAlert = document.getElementById('notificationAlert');
+        const donationFeed = document.getElementById('donationFeed');
+        
+        let currentStats = {
+            totalAmount: <%= stats.totalAmount %>,
+            totalDonations: <%= stats.totalDonations %>,
+            averageAmount: <%= stats.averageAmount || 0 %>,
+            topDonation: <%= stats.topDonation || 0 %>
+        };
+
+        // สร้าง particles
+        function createParticles() {
+            const particles = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+                particles.appendChild(particle);
+            }
+        }
+
+        // เล่นเสียงแจ้งเตือน
+        function playNotificationSound() {
+            try {
+                donationSound.currentTime = 0;
+                donationSound.play().catch(console.error);
+            } catch (error) {
+                console.error('Error playing sound:', error);
+            }
+        }
+
+        // แสดงการแจ้งเตือนแบบป็อปอัพ
+        function showNotification(donation) {
+            notificationAlert.innerHTML = `
+                <div style="margin-bottom: 15px;">🎉 การบริจาคใหม่! 🎉</div>
+                <div style="font-size: 1.5em; margin-bottom: 10px;">${donation.donorName}</div>
+                <div style="font-size: 2em; color: #ffd89b;">${donation.amount.toLocaleString()} บาท</div>
+            `;
+            
+            notificationAlert.classList.add('show');
+            
+            setTimeout(() => {
+                notificationAlert.classList.remove('show');
+            }, 4000);
+        }
+
+        // อ่านชื่อและจำนวนเงินด้วย TTS
+        function speakDonation(donation) {
+            if ('speechSynthesis' in window) {
+                // หยุดการพูดก่อนหน้า
+                speechSynthesis.cancel();
+                
+                setTimeout(() => {
+                    const message = `ขอบคุณคุณ ${donation.donorName} สำหรับการบริจาค ${donation.amount} บาท`;
+                    const utterance = new SpeechSynthesisUtterance(message);
+                    
+                    // ตั้งค่าเสียง
+                    utterance.lang = 'th-TH';
+                    utterance.rate = 0.8;
+                    utterance.pitch = 1.1;
+                    utterance.volume = 0.8;
+                    
+                    // ลองหาเสียงภาษาไทย
+                    const voices = speechSynthesis.getVoices();
+                    const thaiVoice = voices.find(voice => voice.lang.includes('th')) || voices[0];
+                    if (thaiVoice) {
+                        utterance.voice = thaiVoice;
+                    }
+                    
+                    speechSynthesis.speak(utterance);
+                }, 1000); // รอให้เสียงแจ้งเตือนเล่นจบก่อน
+            }
+        }
+
+        // อัปเดตสถิติ
+        function updateStats(donation) {
+            currentStats.totalAmount += donation.amount;
+            currentStats.totalDonations += 1;
+            currentStats.averageAmount = currentStats.totalAmount / currentStats.totalDonations;
+            currentStats.topDonation = Math.max(currentStats.topDonation, donation.amount);
+
+            document.getElementById('totalAmount').textContent = currentStats.totalAmount.toLocaleString();
+            document.getElementById('totalDonations').textContent = currentStats.totalDonations;
+            document.getElementById('avgAmount').textContent = Math.round(currentStats.averageAmount).toLocaleString();
+            document.getElementById('topDonation').textContent = currentStats.topDonation.toLocaleString();
+        }
+
+        // เพิ่มการบริจาคใหม่ในฟีด
+        function addDonationToFeed(donation) {
+            const donationItem = document.createElement('div');
+            donationItem.className = 'donation-item';
+            donationItem.style.animationDelay = '0s';
+            
+            const timestamp = new Date(donation.timestamp).toLocaleTimeString('th-TH');
+            
+            donationItem.innerHTML = `
+                <div class="timestamp">${timestamp}</div>
+                <div class="donation-header">
+                    <span class="donor-name">${donation.donorName}</span>
+                    <span class="amount">${donation.amount.toLocaleString()} ฿</span>
+                </div>
+                ${donation.message ? `<div class="donation-message">"${donation.message}"</div>` : ''}
+            `;
+            
+            // เพิ่มที่ด้านบน
+            donationFeed.insertBefore(donationItem, donationFeed.firstChild);
+            
+            // ลบรายการเก่าถ้ามีมากเกิน 10 รายการ
+            const items = donationFeed.querySelectorAll('.donation-item');
+            if (items.length > 10) {
+                items[items.length - 1].remove();
+            }
+        }
+
+        // รับการบริจาคใหม่แบบ real-time
+        socket.on('new-donation', (donation) => {
+            console.log('New donation received:', donation);
+            
+            // เล่นเสียงแจ้งเตือน
+            playNotificationSound();
+            
+            // แสดงการแจ้งเตือน
+            showNotification(donation);
+            
+            // อ่านชื่อด้วย TTS
+            speakDonation(donation);
+            
+            // อัปเดตสถิติ
+            updateStats(donation);
+            
+            // เพิ่มในฟีด
+            addDonationToFeed(donation);
+        });
+
+        // โหลดเสียงให้พร้อมใช้งาน
+        window.addEventListener('load', () => {
+            createParticles();
+            
+            // โหลด voices สำหรับ TTS
+            if ('speechSynthesis' in window) {
+                speechSynthesis.getVoices();
+            }
+            
+            // ทดสอบเสียงโดยการคลิก
+            document.addEventListener('click', () => {
+                donationSound.play().catch(() => {});
+            }, { once: true });
+        });
+
+        // อัปเดต voices เมื่อโหลดเสร็จ
+        if ('speechSynthesis' in window) {
+            speechSynthesis.addEventListener('voiceschanged', () => {
+                console.log('Voices loaded:', speechSynthesis.getVoices().length);
+            });
+        }
+    </script>
+</body>
+</html>

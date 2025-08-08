@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Error - เกิดข้อผิดพลาด</title>
+    <style>
+        body { font-family: Arial; text-align: center; margin-top: 50px; }
+        h1 { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <h1>เกิดข้อผิดพลาด</h1>
+    <p><%= message %></p>
+    <% if (error && error.stack) { %>
+        <pre><%= error.stack %></pre>
+    <% } %>
+    <a href="/">กลับหน้าหลัก</a>
+</body>
+</html>

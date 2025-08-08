@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pater Donate - ระบบรับบริจาคออนไลน์</title>
+    <meta name="description" content="ระบบรับบริจาคผ่าน TrueMoney Wallet ที่ปลอดภัยและใช้งานง่าย">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f1419;
+            color: #ffffff;
+            min-height: 100vh;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: linear-gradient(135deg, #1a2332 0%, #0f1419 100%);
+            padding: 1rem 0;
+            border-bottom: 1px solid #2d3748;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .navbar .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4299e1;
+        }
+
+        .navbar .nav-info {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .navbar .nav-info span {
+            color: #a0aec0;
+        }
+
+        .navbar .nav-info a {
+            color: #4299e1;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+
+        .navbar .nav-info a:hover {
+            background: #2d3748;
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 500px;
+            margin: 3rem auto;
+            padding: 0 1rem;
+        }
+
+        /* Form Container */
+        .form-container {
+            background: linear-gradient(135deg, #2d3748 0%, #1a2332 100%);
+            border: 1px solid #4a5568;
+            border-radius: 16px;
+            padding: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            font-size: 0.95rem;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: #1a202c;
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: #718096;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #3182ce, #2c5282);
+            transform: translateY(-1px);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: 500;
+            animation: slideInDown 0.3s ease-out;
+        }
+
+        .alert.success {
+            background: #065f46;
+            border: 1px solid #10b981;
+            color: #d1fae5;
+        }
+
+        .alert.error {
+            background: #7f1d1d;
+            border: 1px solid #ef4444;
+            color: #fecaca;
+        }
+
+        @keyframes slideInDown {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Loading Spinner */
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 1rem;
+            color: #a0aec0;
+        }
+
+        .spinner {
+            border: 3px solid #4a5568;
+            border-top: 3px solid #4299e1;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .navbar .nav-info {
+                flex-direction: column;
+                gap: 0.5rem;
+                font-size: 0.8rem;
+            }
+
+            .main-container {
+                margin: 2rem auto;
+                padding: 0 0.75rem;
+            }
+
+            .form-container {
+                padding: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .navbar .container {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .form-container {
+                padding: 1rem;
+            }
+
+            .main-container {
+                margin: 1rem auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">Pater Donate</div>
+            <div class="nav-info">
+                <span>พัฒนาโดย Namo</span>
+                <a href="https://www.instagram.com/thanawat__3333/" target="_blank" title="IG">IG</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <!-- Alert Container -->
+        <div id="alertContainer" role="alert" aria-live="polite"></div>
+
+        <!-- Donation Form -->
+        <div class="form-container">
+            <form id="donationForm" aria-label="แบบฟอร์มสำหรับส่งการบริจาค">
+                <div class="form-group">
+                    <label for="voucherLink">🎁 ลิงก์ซองอังเปา TrueMoney</label>
+                    <input type="url" 
+                           id="voucherLink" 
+                           name="voucherLink" 
+                           required 
+                           aria-describedby="voucherHint"
+                           placeholder="https://gift.truemoney.com/campaign/?v=...">
+                    <div id="voucherHint" style="font-size: 0.8rem; color: #a0aec0; margin-top: 0.25rem;">
+                        กรุณาวางลิงก์ซองอังเปาจาก TrueMoney Wallet
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="donorName">👤 ชื่อผู้บริจาค</label>
+                    <input type="text" 
+                           id="donorName" 
+                           name="donorName" 
+                           required 
+                           maxlength="100"
+                           aria-describedby="nameHint"
+                           placeholder="ใส่ชื่อหรือนามแฝงของคุณ">
+                    <div id="nameHint" style="font-size: 0.8rem; color: #a0aec0; margin-top: 0.25rem;">
+                        ชื่อจะแสดงในรายการผู้สนับสนุน
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="message">💌 ข้อความ (ไม่จำเป็น)</label>
+                    <textarea id="message" 
+                              name="message" 
+                              rows="3" 
+                              maxlength="500"
+                              aria-describedby="messageHint"
+                              placeholder="ข้อความให้กำลังใจหรือคำขอบคุณ..."></textarea>
+                    <div id="messageHint" style="font-size: 0.8rem; color: #a0aec0; margin-top: 0.25rem;">
+                        สูงสุด 500 ตัวอักษร
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn" aria-describedby="submitHint">
+                    🚀 ส่งการบริจาค
+                </button>
+                <div id="submitHint" style="font-size: 0.8rem; color: #a0aec0; text-align: center; margin-top: 0.5rem;">
+                    การบริจาคของคุณจะถูกประมวลผลทันที
+                </div>
+            </form>
+
+            <div class="loading" id="loading" role="status" aria-label="กำลังประมวลผล">
+                <div class="spinner"></div>
+                <p>กำลังประมวลผลซองอังเปา กรุณารอสักครู่...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Form handling variables
+        const form = document.getElementById('donationForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        const alertContainer = document.getElementById('alertContainer');
+
+        // Show alert function with improved accessibility
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${type}`;
+            alertDiv.textContent = message;
+            alertDiv.setAttribute('role', 'alert');
+            alertDiv.setAttribute('aria-live', 'assertive');
+            
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alertDiv);
+            
+            // Auto remove alerts
+            const timeout = type === 'success' ? 8000 : 12000;
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, timeout);
+
+            // Focus management for screen readers
+            alertDiv.focus();
+        }
+
+        // Enhanced form validation
+        function validateForm(data) {
+            const errors = [];
+
+            // Validate TrueMoney link
+            if (!data.voucherLink || !data.voucherLink.includes('truemoney.com')) {
+                errors.push('กรุณาใส่ลิงก์ TrueMoney ที่ถูกต้อง');
+            }
+
+            // Validate donor name
+            const trimmedName = data.donorName.trim();
+            if (!trimmedName) {
+                errors.push('กรุณาใส่ชื่อผู้บริจาค');
+            } else if (trimmedName.length < 2) {
+                errors.push('ชื่อผู้บริจาคต้องมีความยาวอย่างน้อย 2 ตัวอักษร');
+            }
+
+            // Validate message length if provided
+            if (data.message && data.message.length > 500) {
+                errors.push('ข้อความต้องมีความยาวไม่เกิน 500 ตัวอักษร');
+            }
+
+            return errors;
+        }
+
+        // Main form submission handler
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+            
+            // Client-side validation
+            const validationErrors = validateForm(data);
+            if (validationErrors.length > 0) {
+                showAlert(validationErrors.join(' และ '), 'error');
+                return;
+            }
+            
+            // Set loading state
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'กำลังส่ง...';
+            loading.style.display = 'block';
+            
+            try {
+                const response = await fetch('/api/donate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    showAlert(result.message || 'ส่งการบริจาคสำเร็จแล้ว ขอบคุณสำหรับการสนับสนุน!', 'success');
+                    form.reset();
+                    
+                    // Play success sound if available
+                    try {
+                        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmEbBSuVxuvSdCUEO4q+6ttOEAx4ve/buHQjBVCi2umsRwwXb7Tl2ZJCDhde6/S3XhUGNobD4fJICShV2vPRfCgDPovU3N9XDQ5jrtddVPgAZSKbS5Zu6VgwsX87qs4EoBTCN0N6TXwwNV6zZ3l5GFA94wPa1YhYHN4K++dxMDQp+vPfWWxEINYTU2N9VGg0uX8bp2YhOOQtJtedXPQ4YfL/23l1UDysNXs7o1J5kKApDs+rZfzYJP4nN3d5UIg0ePKnG3XJKHQtvtuzZciEFVJnN2eJUGw8qcLnk3VdHFA1JqODdnE4QGGm55N1nSBQNUKfF63hdIgU3U8nk3FpOEgsNXo/r4FhPHgtvpNnlXkMSCEym0+CaYiQJX8vqmFJEGhFjsd1nTR0NaKbT4J1iJQBcyOy6VSQGGaHT4F1aFQc');
+                        audio.volume = 0.3;
+                        audio.play().catch(() => {}); // Ignore errors
+                    } catch (e) {}
+                    
+                } else {
+                    const errorMessage = result.message || 'เกิดข้อผิดพลาดในการประมวลผลการบริจาค กรุณาลองใหม่อีกครั้ง';
+                    showAlert(errorMessage, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Donation submission error:', error);
+                
+                let errorMessage = 'เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่อีกครั้ง';
+                
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    errorMessage = 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและลองใหม่';
+                } else if (error.name === 'AbortError') {
+                    errorMessage = 'การเชื่อมต่อหมดเวลา กรุณาลองส่งใหม่อีกครั้ง';
+                }
+                
+                showAlert(errorMessage, 'error');
+                
+            } finally {
+                // Reset button and loading state
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 ส่งการบริจาค';
+                loading.style.display = 'none';
+            }
+        });
+
+        // Real-time input validation
+        const voucherInput = document.getElementById('voucherLink');
+        const donorNameInput = document.getElementById('donorName');
+
+        voucherInput.addEventListener('blur', function() {
+            if (this.value && !this.value.includes('truemoney.com')) {
+                showAlert('ลิงก์ที่ป้อนไม่ใช่ลิงก์ TrueMoney ที่ถูกต้อง', 'error');
+            }
+        });
+
+        donorNameInput.addEventListener('input', function() {
+            if (this.value.length > 100) {
+                this.value = this.value.substring(0, 100);
+                showAlert('ชื่อผู้บริจาคต้องมีความยาวไม่เกิน 100 ตัวอักษร', 'error');
+            }
+        });
+
+        // Message counter
+        const messageInput = document.getElementById('message');
+        messageInput.addEventListener('input', function() {
+            if (this.value.length > 500) {
+                this.value = this.value.substring(0, 500);
+                showAlert('ข้อความต้องมีความยาวไม่เกิน 500 ตัวอักษร', 'error');
+            }
+        });
+
+        // Keyboard navigation improvements
+        document.addEventListener('keydown', function(e) {
+            // ESC key to close alerts
+            if (e.key === 'Escape') {
+                const alerts = alertContainer.children;
+                for (let alert of alerts) {
+                    alert.remove();
+                }
+            }
+        });
+
+        // Auto-focus first input on page load
+        window.addEventListener('load', function() {
+            voucherInput.focus();
+        });
+    </script>
+</body>
+</html>

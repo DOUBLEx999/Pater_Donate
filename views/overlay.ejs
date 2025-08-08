@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donation Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            font-family: Arial, sans-serif;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .notifications-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 350px;
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        .donation-notification {
+            background: white;
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            color: #333;
+            text-align: center;
+            transform: scale(0);
+            opacity: 0;
+            animation: popIn 0.5s ease-out forwards;
+        }
+
+        .donation-notification.hide {
+            animation: popOut 0.3s ease-in forwards;
+        }
+
+        .donation-image {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .donation-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .donation-image .placeholder-text {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .donor-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .donation-amount {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #e74c3c;
+        }
+
+        .donation-message {
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        .donation-message:empty {
+            display: none;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes popOut {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .notifications-container {
+                width: 90%;
+                max-width: 350px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="notifications-container" id="notificationsContainer">
+    </div>
+
+    <audio id="donationSound" preload="auto">
+        <source src="/sound/bing.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const DONATION_IMAGE = '/img/donate.png';
+
+        function preloadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('Failed to load image'));
+                img.src = src;
+            });
+        }
+
+        // Socket connection with better error handling for OBS
+        let socket;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+
+        function initializeSocket() {
+            try {
+                socket = io({
+                    transports: ['websocket', 'polling'],
+                    timeout: 10000,
+                    forceNew: false,
+                    reconnection: true,
+                    reconnectionDelay: 1000,
+                    reconnectionAttempts: maxReconnectAttempts
+                });
+
+                socket.on('connect', () => {
+                    console.log('✅ Connected to donation server');
+                    reconnectAttempts = 0;
+                });
+
+                socket.on('disconnect', (reason) => {
+                    console.log('❌ Disconnected:', reason);
+                    if (reason === 'io server disconnect') {
+                        // Server forced disconnect, try to reconnect
+                        socket.connect();
+                    }
+                });
+
+                socket.on('connect_error', (error) => {
+                    console.error('Connection error:', error);
+                    reconnectAttempts++;
+                    if (reconnectAttempts >= maxReconnectAttempts) {
+                        console.error('Max reconnection attempts reached');
+                    }
+                });
+
+                socket.on('new-donation', (donation) => {
+                    console.log('New donation received:', donation);
+                    addDonationToQueue(donation);
+                });
+
+            } catch (error) {
+                console.error('Socket initialization failed:', error);
+            }
+        }
+
+        const notificationsContainer = document.getElementById('notificationsContainer');
+        const donationSound = document.getElementById('donationSound');
+
+        let imageLoaded = false;
+        preloadImage(DONATION_IMAGE)
+            .then(() => {
+                imageLoaded = true;
+                console.log('✅ Donation image loaded');
+            })
+            .catch(() => {
+                console.log('❌ Could not load donation image, using emoji fallback');
+                imageLoaded = false;
+            });
+
+        function playNotificationSound() {
+            try {
+                if (donationSound && donationSound.readyState >= 2) {
+                    donationSound.currentTime = 0;
+                    const playPromise = donationSound.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(error => {
+                            console.log('Audio play failed:', error);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error playing sound:', error);
+            }
+        }
+
+        function speakDonation(donation) {
+            if (!('speechSynthesis' in window)) return;
+
+            speechSynthesis.cancel(); // ยกเลิกการพูดที่ค้างอยู่
+
+            const startSpeaking = () => {
+                let message = `ขอบคุณคุณ ${donation.donorName} สำหรับการบริจาค ${donation.amount} บาท`;
+                if (donation.message && donation.message.trim()) {
+                    message += ` พร้อมข้อความว่า ${donation.message}`;
+                }
+
+                const utterance = new SpeechSynthesisUtterance(message);
+                utterance.lang = 'th-TH';
+                utterance.rate = 0.9;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+
+                const voices = speechSynthesis.getVoices();
+                const thaiVoice = voices.find(v => v.lang === 'th-TH' || v.name.toLowerCase().includes('thai'));
+                if (thaiVoice) utterance.voice = thaiVoice;
+
+                speechSynthesis.speak(utterance);
+            };
+
+            if (speechSynthesis.getVoices().length === 0) {
+                speechSynthesis.addEventListener('voiceschanged', startSpeaking, { once: true });
+            } else {
+                startSpeaking();
+            }
+        }
+
+
+        // Queue system for handling multiple donations
+        let donationQueue = [];
+        let isShowingNotification = false;
+
+        function createDonationNotification(donation) {
+            console.log('Displaying notification for:', donation.donorName);
+
+            const notification = document.createElement('div');
+            notification.className = 'donation-notification';
+
+            notification.innerHTML = `
+                <div class="donation-image">
+                    ${imageLoaded ?
+                    `<img src="${DONATION_IMAGE}" alt="Donation">` :
+                    `<div class="placeholder-text">💰</div>`
+                }
+                </div>
+                <div class="donor-name">${donation.donorName}</div>
+                <div class="donation-amount">${donation.amount.toLocaleString()} บาท</div>
+                <div class="donation-message">${donation.message || ''}</div>
+            `;
+
+            // Clear any existing notifications
+            const existingNotifications = notificationsContainer.querySelectorAll('.donation-notification');
+            existingNotifications.forEach(existing => {
+                existing.classList.add('hide');
+                setTimeout(() => {
+                    if (existing.parentNode) {
+                        existing.remove();
+                    }
+                }, 300);
+            });
+
+            // Add new notification after clearing old ones
+            setTimeout(() => {
+                notificationsContainer.appendChild(notification);
+
+                // Auto-hide after 6 seconds
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.classList.add('hide');
+                        setTimeout(() => {
+                            if (notification.parentNode) {
+                                notification.remove();
+                            }
+                            isShowingNotification = false;
+                            // Process next donation in queue
+                            processQueue();
+                        }, 300);
+                    }
+                }, 6000);
+            }, 400);
+        }
+
+        function processQueue() {
+            if (donationQueue.length > 0 && !isShowingNotification) {
+                isShowingNotification = true;
+                const nextDonation = donationQueue.shift();
+                createDonationNotification(nextDonation);
+                playNotificationSound();
+                speakDonation(nextDonation);
+                console.log(`Processing donation. Remaining in queue: ${donationQueue.length}`);
+            }
+        }
+
+        function addDonationToQueue(donation) {
+            console.log('Adding donation to queue:', donation.donorName);
+
+            // Validate donation data
+            if (!donation || !donation.donorName || !donation.amount) {
+                console.error('Invalid donation data:', donation);
+                return;
+            }
+
+            // Ensure amount is a number
+            if (typeof donation.amount === 'string') {
+                donation.amount = parseFloat(donation.amount) || 0;
+            }
+
+            if (!isShowingNotification) {
+                // Show immediately if no notification is currently displayed
+                isShowingNotification = true;
+                createDonationNotification(donation);
+                playNotificationSound();
+                speakDonation(donation);
+            } else {
+                // Add to queue if notification is currently showing
+                donationQueue.push(donation);
+                console.log(`Donation queued. Total in queue: ${donationQueue.length}`);
+            }
+        }
+
+        // Initialize everything when page loads
+        window.addEventListener('load', () => {
+            console.log('Donation overlay loaded and ready');
+
+            if ('speechSynthesis' in window) {
+                speechSynthesis.getVoices(); // trigger โหลดเสียง
+            }
+
+            // Initialize socket connection
+            initializeSocket();
+
+            // Load speech synthesis voices
+            if ('speechSynthesis' in window) {
+                const loadVoices = () => {
+                    const voices = speechSynthesis.getVoices();
+                    console.log(`Speech synthesis ready with ${voices.length} voices`);
+                };
+
+                if (speechSynthesis.getVoices().length > 0) {
+                    loadVoices();
+                } else {
+                    speechSynthesis.addEventListener('voiceschanged', loadVoices);
+                }
+            }
+
+            // Enable audio for OBS/Browser
+            const enableAudio = () => {
+                if (donationSound && donationSound.readyState >= 2) {
+                    donationSound.play().then(() => {
+                        donationSound.pause();
+                        donationSound.currentTime = 0;
+                        console.log('Audio enabled for browser');
+                    }).catch(() => {
+                        console.log('Audio enable failed - this is normal in OBS');
+                    });
+                }
+            };
+
+            // Try to enable audio immediately and on first interaction
+            enableAudio();
+            document.addEventListener('click', enableAudio, { once: true });
+        });
+
+        // Error handling for uncaught errors
+        window.addEventListener('error', (event) => {
+            console.error('Overlay error:', event.error);
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+        });
+
+        console.log('🚀 Donation overlay initialized - Ready for OBS');
+    </script>
+</body>
+
+</html>
